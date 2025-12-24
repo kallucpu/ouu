@@ -1,97 +1,59 @@
+import streamlit as st
 import cv2
 import mediapipe as mp
-import math
-import pygame
+import numpy as np
 
+st.title("Blink Detection with Face Mesh")
 
+# Load custom sound
+audio_file = "alert.mp3"
+
+# Initialize MediaPipe Face Mesh
 mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(
     max_num_faces=1,
+    refine_landmarks=True,
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5
 )
 
-
-mp_drawing = mp.solutions.drawing_utils
-
-
-cap = cv2.VideoCapture(0)
-
-
+# Define eyes landmark indices for EAR calculation
 LEFT_EYE = [33, 160, 158, 133, 153, 144]
 RIGHT_EYE = [362, 385, 387, 263, 373, 380]
 
-# EAR threshold
-EYE_THRESHOLD = 0.25
-
-
-pygame.mixer.init()
-pygame.mixer.music.load("audio.mp3")  
-
-
-sound_playing = False
-
-
+# Helper functions
 def euclidean(p1, p2):
-    return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
+    return np.linalg.norm(np.array([p1.x, p1.y]) - np.array([p2.x, p2.y]))
 
-def eye_aspect_ratio(landmarks, eye):
-    p1, p2, p3, p4, p5, p6 = [landmarks[i] for i in eye]
-    return (euclidean(p2, p6) + euclidean(p3, p5)) / (2 * euclidean(p1, p4))
+def eye_aspect_ratio(landmarks, eye_indices):
+    p = [landmarks[i] for i in eye_indices]
+    return (euclidean(p[1], p[5]) + euclidean(p[2], p[4])) / (2 * euclidean(p[0], p[3]))
 
+# Webcam input via Streamlit
+webrtc = st.camera_input("Look into the camera")
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
+if webrtc is not None:
+    # Convert to BGR (OpenCV format)
+    frame = np.array(webrtc)
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-
-    frame = cv2.flip(frame, 1)
-
-
-    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    results = face_mesh.process(rgb_frame)
+    # Process frame
+    results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
     if results.multi_face_landmarks:
-        landmarks = results.multi_face_landmarks[0]
+        landmarks = results.multi_face_landmarks[0].landmark
 
+        # Draw landmarks
+        for lm in landmarks:
+            x, y = int(lm.x * frame.shape[1]), int(lm.y * frame.shape[0])
+            cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)
 
-        mp_drawing.draw_landmarks(
-            frame,
-            landmarks,
-            mp_face_mesh.FACEMESH_TESSELATION,
-            landmark_drawing_spec=mp_drawing.DrawingSpec(color=(0,255,0), thickness=1, circle_radius=1),
-            connection_drawing_spec=mp_drawing.DrawingSpec(color=(0,0,255), thickness=1, circle_radius=1)
-        )
+        # Compute EAR
+        ear = (eye_aspect_ratio(landmarks, LEFT_EYE) + eye_aspect_ratio(landmarks, RIGHT_EYE)) / 2
 
-    
-        for idx in LEFT_EYE + RIGHT_EYE:
-            x = int(landmarks.landmark[idx].x * frame.shape[1])
-            y = int(landmarks.landmark[idx].y * frame.shape[0])
-            cv2.circle(frame, (x, y), 2, (255, 0, 0), -1)
+        # Blink detection threshold
+        if ear < 0.25:
+            st.audio(audio_file)  # Play alert while eyes are closed
 
-        left_ear = eye_aspect_ratio(landmarks.landmark, LEFT_EYE)
-        right_ear = eye_aspect_ratio(landmarks.landmark, RIGHT_EYE)
-        ear = (left_ear + right_ear) / 2
-
-
-        if ear < EYE_THRESHOLD:
-            if not sound_playing:
-                pygame.mixer.music.play(-1) 
-                sound_playing = True
-        else:
-            if sound_playing:
-                pygame.mixer.music.stop()
-                sound_playing = False
-
-    
-    cv2.imshow("Face Mesh + Blink Detection", frame)
-
-    
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-
-cap.release()
-cv2.destroyAllWindows()
-pygame.mixer.quit()
+    # Display frame
+    st.image(frame, channels="BGR")
