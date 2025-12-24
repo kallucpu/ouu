@@ -1,15 +1,14 @@
 import streamlit as st
 import cv2
-import mediapipe as mp
 import numpy as np
+from mediapipe.python.solutions import face_mesh as mp_face_mesh
 
 st.title("Blink Detection with Face Mesh")
 
 # Load custom sound
-audio_file = "alert.mp3"
+audio_file = "audio.mp3"
 
 # Initialize MediaPipe Face Mesh
-mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(
     max_num_faces=1,
     refine_landmarks=True,
@@ -17,7 +16,7 @@ face_mesh = mp_face_mesh.FaceMesh(
     min_tracking_confidence=0.5
 )
 
-# Define eyes landmark indices for EAR calculation
+# Eye landmarks for EAR calculation
 LEFT_EYE = [33, 160, 158, 133, 153, 144]
 RIGHT_EYE = [362, 385, 387, 263, 373, 380]
 
