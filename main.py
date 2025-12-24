@@ -6,11 +6,11 @@ import math
 
 st.title("Blink Detection with Face Mesh")
 
-# Load custom sound
+# Load alert sound
 audio_file = "audio.mp3"
 
-# Initialize MediaPipe Face Mesh
-face_mesh = mp.solutions.face_mesh.FaceMesh(
+# Initialize MediaPipe Face Mesh (directly, no mp.solutions)
+face_mesh = mp.FaceMesh(
     max_num_faces=1,
     refine_landmarks=True,
     min_detection_confidence=0.5,
@@ -46,7 +46,7 @@ if webrtc is not None:
     if results.multi_face_landmarks:
         landmarks = results.multi_face_landmarks[0].landmark
 
-        # Draw landmarks
+        # Draw eyes
         for idx in LEFT_EYE + RIGHT_EYE:
             x = int(landmarks[idx].x * frame.shape[1])
             y = int(landmarks[idx].y * frame.shape[0])
@@ -55,12 +55,4 @@ if webrtc is not None:
         # Calculate EAR
         left_ear = eye_aspect_ratio(landmarks, LEFT_EYE)
         right_ear = eye_aspect_ratio(landmarks, RIGHT_EYE)
-        ear = (left_ear + right_ear) / 2
-
-        # Play alert if eyes closed
-        if ear < EYE_THRESHOLD:
-            st.audio(audio_file, start_time=0)
-
-    # Display frame in browser
-    st.image(frame, channels="BGR")
-
+        ear = (left
