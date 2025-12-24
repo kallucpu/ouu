@@ -1,14 +1,15 @@
 import streamlit as st
 import cv2
 import numpy as np
-from mediapipe.python.solutions import face_mesh as mp_face_mesh
+import mediapipe as mp
 
 st.title("Blink Detection with Face Mesh")
 
 # Load custom sound
 audio_file = "audio.mp3"
 
-# Initialize MediaPipe Face Mesh
+# MediaPipe Face Mesh
+mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(
     max_num_faces=1,
     refine_landmarks=True,
