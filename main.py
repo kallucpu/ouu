@@ -55,4 +55,12 @@ if webrtc is not None:
         # Calculate EAR
         left_ear = eye_aspect_ratio(landmarks, LEFT_EYE)
         right_ear = eye_aspect_ratio(landmarks, RIGHT_EYE)
-        ear = (left
+        ear = (left_ear + right_ear) / 2
+
+        # Play alert if eyes closed
+        if ear < EYE_THRESHOLD:
+            st.audio(audio_file, start_time=0)
+
+    # Display frame in browser
+    st.image(frame, channels="BGR")
+
